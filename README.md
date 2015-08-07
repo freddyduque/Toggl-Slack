@@ -11,31 +11,13 @@ Backend application in ruby to be executed every certain time, and based on a pr
 
 **Ruby:** The result from Toggl will be analyzed using this language and it will trigger the cue to Slack to display the notifications based on the previous criteria.
 
-##Procedure
+## Requires
 
-First understand how Toggl works, create an account, and based on the token authentication method run a couple of tests.
-
-Testing the authentication API using `curl` 
-
-Token Authentication
-```shell
-curl -v -u xxxxxx:api_token -X GET https://www.toggl.com/api/v8/me
-```
-
-To understand in a better way the `curl` output, `jazor` was used to parse the result.
-```shell
+``` shell
 sudo gem install jazor
 sudo gem install bundler
-```
-
-Using `jazor` to understand the output:
-```shell
-curl -v -u xxxxxx:api_token -X GET https://www.toggl.com/api/v8/me?with_related_data=true | jazor -c
-```
-
-executing the ruby application:
-```shell
-ruby testting.rb
 sudo gem install faraday
 sudo gem install awesome_print
+sudo gem install slack-notifier
 ```
+##Procedure
