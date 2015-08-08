@@ -8,7 +8,7 @@ require 'thor'
 
 class Tracker_cli < Thor
   attr_accessor :debug
-  
+
   desc "tknzr", "TT=Toggle Token, SW=Slack WebHook URL, SU=Slack User Account, TL=Time to Analyze, BN=Default BOT Name, DB=[true] if you want to activate Debug Mode"
 
   option :sw, :required => true
@@ -22,25 +22,25 @@ class Tracker_cli < Thor
     self.debug_on(options[:db]) if !options[:db].nil? && options[:db]=="true"
 
     ap "Slack WebHook URL: #{options[:sw]}" if @debug                                           # Printing Received Information
-    ap "Toggl token: #{options[:tt]}" if @debug  
-    ap "Time to Analyze: #{options[:tl]}" if @debug   
-    ap "Slack User Account: #{options[:su]}" if @debug      
-    ap "Debug Mode: #{options[:db]}" if @debug 
-    ap "BOT Name: #{options[:bn]}" if @debug 
+    ap "Toggl token: #{options[:tt]}" if @debug
+    ap "Time to Analyze: #{options[:tl]}" if @debug
+    ap "Slack User Account: #{options[:su]}" if @debug
+    ap "Debug Mode: #{options[:db]}" if @debug
+    ap "BOT Name: #{options[:bn]}" if @debug
 
     toggl_hash = connect_toggl(options[:tt])                                                    # Get the Toggl User Information
     ap toggl_hash if @debug
 
     tgl_task = get_running_task(toggl_hash)                                                     # Get Running Task
-    ap tgl_task if @debug 
+    ap tgl_task if @debug
 
     tgl_task.has_value?("error") ? (ap tgl_task):(proccess_task(tgl_task))                      # Check if the returned hash has the necessary information 
   end
 
   desc "proccess_running_task","Process the Running Task"                                       # Get the Running Time and Notification Type
-  def proccess_task(tgl_task)                                                                   
+  def proccess_task(tgl_task)
     tgl_task.merge!({"running_time" => get_running_time(tgl_task)})
-    
+
     tgl_not_type = get_notification_type(options[:tl].to_i,tgl_task["running_time"])            # Get the Notification Type
     tgl_task.merge!(tgl_not_type)
     
@@ -54,12 +54,12 @@ class Tracker_cli < Thor
 
     main_message = get_main_message(tgl_task,def_conf)                                          # Set the Main Message
     attachment_message = set_attachment_hash(tgl_task)                                          # Set the Attachment Notification Theme Hash
-    
+
     slack_con.ping main_message, attachments: attachment_message                                # Send the Message to Slack using 'slack-notifier'
   end
 
   desc "set_attachment_hash", "Fill it up"                                                      # Set the Notification pattern
-  def set_attachment_hash(tgl_task)                            
+  def set_attachment_hash(tgl_task)
     pretext = "Please! check the following on your Toggle Timer"
     text = "\*Task description:\* \_#{tgl_task.key?("description") ? "#{tgl_task["description"]}" : "No Description"}\_\n\*Running Time:\* #{tgl_task["running_time"]} seconds or #{Time.at(tgl_task["running_time"]).utc.strftime("%H:%M:%S")}\n\*Status:\* #{tgl_task["status"]}"
     color = tgl_task["color"]
@@ -70,32 +70,32 @@ class Tracker_cli < Thor
   end
 
   desc "connect_toggl", "Fill it up"                                                            # Set the Connection with Toggl
-  def connect_toggl(toggle_tok)                                                     
-    t_con = Toggl.new(toggle_tok) 
+  def connect_toggl(toggle_tok)
+    t_con = Toggl.new(toggle_tok)
     return t_con.me(true)
   end
 
   desc "connect_slack", "Fill it up"                                                            # Set the Connection with Slack
-  def connect_slack(slack_hook,opt_hash)                             
-    return Slack::Notifier.new slack_hook, opt_hash                                 
+  def connect_slack(slack_hook,opt_hash)
+    return Slack::Notifier.new slack_hook, opt_hash
   end
 
   desc "get_main_message","Get the Main Message to show on Slack"                               # Get the Main Message to show on Slack
-  def get_main_message(tgl_task,def_conf)                                           
+  def get_main_message(tgl_task,def_conf)
     return s_msg = "Hi #{tgl_task["fullname"]} #{def_conf[:channel] if def_conf[:channel].start_with? '@'} This is a friendly notification"        
   end
 
   desc "set_default_slack_conf", "Load Slack default Configuration"                             # Set the Default Slack Configuration
   def set_default_slack_conf(s_channel="#general",s_botname="BOT_HMD",s_link_names=1,s_icon_emoji=":space_invader:")
-    s_channel="#general" if s_channel.nil? 
+    s_channel="#general" if s_channel.nil
     s_botname="BOT_HMD" if s_botname.nil?
     return {channel: s_channel, username: s_botname, link_names: s_link_names, icon_emoji: s_icon_emoji}
   end
 
   desc "get_running_task", "Fill it up"                                                         # Get the Current Running Task in Toggl
-  def get_running_task(t_info)    
+  def get_running_task(t_info)
     if t_info.key?("time_entries")
-      t_info["time_entries"].each do |i|        
+      t_info["time_entries"].each do |i|
         return i.merge({"fullname" => t_info["fullname"]}) if i.key?("stop") == false
       end
       return {"type" => "error", "description" => "This User has no Running Tasks", "time" => "#{Time.new}"}
@@ -105,11 +105,11 @@ class Tracker_cli < Thor
   end
 
   desc "get_running_time", "Get Running Time"                                                   # Get the task's running time in secs
-  def get_running_time(t_info)                                              
+  def get_running_time(t_info)
     c_time_full = Time.now().localtime("+00:00")
     r_time_sec = c_time_full.to_i+t_info["duration"]
     ap "Running Time: #{r_time_sec} seconds or #{Time.at(r_time_sec).utc.strftime("%H:%M:%S")}" if @debug
-    return r_time_sec.to_i    
+    return r_time_sec.to_i
   end
 
   desc "get_notification_type", "Check if the task has been running for more than the expected" # Stablish the Running time thresholds
