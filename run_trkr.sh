@@ -1,5 +1,6 @@
 #!/bin/sh
-while true ;do
-   ./trkr.rb tknzr --st="add slack token here" --tt="add toggle token here" --bt="add slack bot token here"
-sleep 60; #sleep 3600
-done;
+tl=60 #tl=3600 #change this to 1 hour = 3600 secs
+while true; do
+	./trkr.rb tknzr --sw="add your webhook URL here" --tt="add your toggl token here" --tl="add the time limit (in seconds) here, every checkpoint or threshold" [--su]="add the slack username or channel to notify here, default: '#general', DM: '@slack.user'" [--bn]="add your personalized Bot Name, default: 'HMD_BOT'" [--db]="add true here if you want to activate debug mode, default: off"   
+	sleep $tl; 
+done
