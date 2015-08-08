@@ -1,6 +1,6 @@
 #!/usr/bin/ruby
 
-require_relative 'app/togglV8'
+require_relative 'lib/togglV8'
 require 'awesome_print'
 require 'slack-notifier'
 require 'time'
@@ -21,97 +21,90 @@ class Tracker_cli < Thor
   def tknzr()
     self.debug_on(options[:db]) if !options[:db].nil? && options[:db]=="true"
 
-    ap "Slack WebHook URL: #{options[:sw]}" if @debug                               # Printing Received Information
+    ap "Slack WebHook URL: #{options[:sw]}" if @debug                                           # Printing Received Information
     ap "Toggl token: #{options[:tt]}" if @debug  
     ap "Time to Analyze: #{options[:tl]}" if @debug   
     ap "Slack User Account: #{options[:su]}" if @debug      
     ap "Debug Mode: #{options[:db]}" if @debug 
     ap "BOT Name: #{options[:bn]}" if @debug 
 
-=begin    
-    slack_web=options[:sw]
-    toggl_tok=options[:tt]
-    time_limi=options[:tl]
-    slack_use=options[:su]
-    debug_mod=options[:db]
-    def_bot_n=options[:bn]
-=end
+    toggl_hash = connect_toggl(options[:tt])                                                    # Get the Toggl User Information
+    ap toggl_hash if @debug
 
-    tgl_hash = connect_t(options[:tt])                                              # Get the Toggl User Information
-    ap tgl_hash if @debug
+    tgl_task = get_running_task(toggl_hash)                                                     # Get Running Task
+    ap tgl_task if @debug 
 
-    tgl_task = get_running_task(tgl_hash)                                           # Get Running Task
-    ap tgl_task if @debug                                                           
-
-    if tgl_task.class == Hash                                                       # Check if the returned is a hash with the requested information or not
-      running_time = get_running_time(tgl_task)                                     # Get the Running Time
-      tgl_not_type = get_notification_type(options[:tl].to_i,running_time)          # Get the Notification Type     
-      if tgl_not_type.class == Hash                                                 # Check if the returned is a hash with the requested information or not
-        def_conf = set_defslack_conf(options[:su],options[:bn])                     # Set the Default Configuration
-        slack_con = connect_s(options[:sw],def_conf)                                # Set the Slack Connection
-        notif_hash = set_notif_hash(tgl_task,tgl_not_type,running_time)             # Set the Notification Hash
-        main_message = get_main_message(tgl_hash,def_conf)                          # Set the Main Message
-        slack_con.ping main_message, attachments: notif_hash                        # Send the Message to Slack using 'slack-notifier'
-      else
-        ap tgl_not_type                                                             # if it is not a hash, it will print a message
-      end      
-    else
-       ap tgl_task                                                                  # if it is not a hash, it will print a message
-    end    
+    tgl_task.has_value?("error") ? (ap tgl_task):(proccess_task(tgl_task))                      # Check if the returned hash has the necessary information 
   end
 
-  desc "notif_hash", "Fill it up"
-  def set_notif_hash(tgl_task,tgl_not_type,running_time)                            # Set the Notification pattern
-    ap tgl_not_type    
+  desc "proccess_running_task","Process the Running Task"                                       # Get the Running Time and Notification Type
+  def proccess_task(tgl_task)                                                                   
+    tgl_task.merge!({"running_time" => get_running_time(tgl_task)})
+    
+    tgl_not_type = get_notification_type(options[:tl].to_i,tgl_task["running_time"])            # Get the Notification Type
+    tgl_task.merge!(tgl_not_type)
+    
+    tgl_not_type.has_value?("error") ? (ap tgl_not_type):(proccess_notification_task(tgl_task)) # Check if the returned hash has the necessary information 
+  end
+
+  desc "proccess_notification_task","Process the Notification Task"
+  def proccess_notification_task(tgl_task)
+    def_conf = set_default_slack_conf(options[:su],options[:bn])                                # Set the Default Slack Configuration
+    slack_con = connect_slack(options[:sw],def_conf)                                            # Set the Slack Connection
+
+    main_message = get_main_message(tgl_task,def_conf)                                          # Set the Main Message
+    attachment_message = set_attachment_hash(tgl_task)                                          # Set the Attachment Notification Theme Hash
+    
+    slack_con.ping main_message, attachments: attachment_message                                # Send the Message to Slack using 'slack-notifier'
+  end
+
+  desc "set_attachment_hash", "Fill it up"                                                      # Set the Notification pattern
+  def set_attachment_hash(tgl_task)                            
     pretext = "Please! check the following on your Toggle Timer"
-    text = "\*Task description:\* \_#{tgl_task.key?("description") ? "#{tgl_task["description"]}" : "No Description"}\_\n\*Running Time:\* #{running_time} seconds or #{Time.at(running_time).utc.strftime("%H:%M:%S")}\n\*Status:\* #{tgl_not_type[:type]}"
-    color = tgl_not_type[:color]
+    text = "\*Task description:\* \_#{tgl_task.key?("description") ? "#{tgl_task["description"]}" : "No Description"}\_\n\*Running Time:\* #{tgl_task["running_time"]} seconds or #{Time.at(tgl_task["running_time"]).utc.strftime("%H:%M:%S")}\n\*Status:\* #{tgl_task["status"]}"
+    color = tgl_task["color"]
     title = "Toggle Information"
     title_link = "https://www.toggl.com/app/timer"
-    mrkdwn_in = "text","pretext"
-    s_attach = [{pretext: pretext,text: text,color: color,title: title,title_link: title_link,mrkdwn_in: mrkdwn_in}]
-    return s_attach
+    mrkdwn_in = ["text","pretext"]
+    return [{pretext: pretext,text: text,color: color,title: title,title_link: title_link,mrkdwn_in: mrkdwn_in}]
   end
 
-  desc "connec_t", "Fill it up"
-  def connect_t(toggle_tok)                                                         # Set the Connection with Toggl
-    t_con = Toggl.new(toggle_tok)                               
-    t_info = t_con.me(true)
-    return t_info
+  desc "connect_toggl", "Fill it up"                                                            # Set the Connection with Toggl
+  def connect_toggl(toggle_tok)                                                     
+    t_con = Toggl.new(toggle_tok) 
+    return t_con.me(true)
   end
 
-  desc "connec_s", "Fill it up"
-  def connect_s(slack_hook,opt_hash)    
-    notifier = Slack::Notifier.new slack_hook, opt_hash                             # Set the Connection with Slack
-    return notifier
+  desc "connect_slack", "Fill it up"                                                            # Set the Connection with Slack
+  def connect_slack(slack_hook,opt_hash)                             
+    return Slack::Notifier.new slack_hook, opt_hash                                 
   end
 
-  desc "get_main_message","Get the Main Message to show on Slack"
-  def get_main_message(tgl_hash,def_conf)                                           # Get the Main Message to show on Slack
-    s_msg = "Hi #{tgl_hash["fullname"]} #{def_conf[:channel] if def_conf[:channel].start_with? '@'} This is a friendly notification"            # Filling the s_attach hash with the related information to notify the user              
+  desc "get_main_message","Get the Main Message to show on Slack"                               # Get the Main Message to show on Slack
+  def get_main_message(tgl_task,def_conf)                                           
+    return s_msg = "Hi #{tgl_task["fullname"]} #{def_conf[:channel] if def_conf[:channel].start_with? '@'} This is a friendly notification"        
   end
 
-  desc "set_defslack_conf", "Load Slack default Configuration"                      # Set the Default Slack Configuration
-  def set_defslack_conf(s_channel="#general",s_botname="BOT_HMD_BOT",s_link_names=1)
+  desc "set_default_slack_conf", "Load Slack default Configuration"                             # Set the Default Slack Configuration
+  def set_default_slack_conf(s_channel="#general",s_botname="BOT_HMD",s_link_names=1,s_icon_emoji=":space_invader:")
     s_channel="#general" if s_channel.nil? 
-    s_botname="BOT_HMD_BOT" if s_botname.nil?
-    hash = {channel: s_channel, username: s_botname,link_names: s_link_names}
-    return hash
+    s_botname="BOT_HMD" if s_botname.nil?
+    return {channel: s_channel, username: s_botname, link_names: s_link_names, icon_emoji: s_icon_emoji}
   end
 
-  desc "get_running_task", "Fill it up"                                             # Get the Current Running Task in Toggl
+  desc "get_running_task", "Fill it up"                                                         # Get the Current Running Task in Toggl
   def get_running_task(t_info)    
     if t_info.key?("time_entries")
-      t_info["time_entries"].each do |i|
-        return i if i.key?("stop") == false
+      t_info["time_entries"].each do |i|        
+        return i.merge({"fullname" => t_info["fullname"]}) if i.key?("stop") == false
       end
-      return "This User has no Running Tasks"
+      return {"type" => "error", "description" => "This User has no Running Tasks", "time" => "#{Time.new}"}
     else
-      return "This User has no Tasks!"
+      return {"type" => "error", "description" => "This User has no Tasks", "time" => "#{Time.new}"}
     end
   end
 
-  desc "get_running_time", "Get Running Time"                                       # Get the task's running time in secs
+  desc "get_running_time", "Get Running Time"                                                   # Get the task's running time in secs
   def get_running_time(t_info)                                              
     c_time_full = Time.now().localtime("+00:00")
     r_time_sec = c_time_full.to_i+t_info["duration"]
@@ -119,31 +112,31 @@ class Tracker_cli < Thor
     return r_time_sec.to_i    
   end
 
-  desc "check_threshold", "Check if the task has been running for more than the expected"       # Stablish the Running time thresholds
+  desc "get_notification_type", "Check if the task has been running for more than the expected" # Stablish the Running time thresholds
   def get_notification_type(threshold,current_runtime)
     th_hash = set_notification_threshold(threshold)
     ap th_hash if @debug
     case current_runtime
     when th_hash[0][:min] .. th_hash[0][:max]
-        return {type: "Notification",color: "#00CC00"}
+        return {"status" => "Notification","color" => "#00CC00"}
     when th_hash[1][:min] .. th_hash[1][:max]
-        return {type: "Warning",color: "#FFFF00"}
+        return {"status" => "Warning","color" => "#FFFF00"}
     when th_hash[2][:min] .. th_hash[2][:max]
-        return {type: "Danger",color: "#FF8000"}
+        return {"status" => "Danger","color" => "#FF8000"}
     when th_hash[3][:min] .. th_hash[3][:max]
-        return {type: "Houston, We've got a Problem!",color: "#FF0000"}
+        return {"status" => "Houston, We've got a Problem!","color" => "#FF0000"}
     else
-        return "There is no Notification for this User and Task"
+        return {"type" => "error", "description" => "There is no Notification for this User and Task", "time" => "#{Time.new}"}
     end
   end
 
   desc "set_notification_threshold", "Set the Notification Threshold for each type of status"   # Recursive function to set the notifications threshold
-  def set_notification_threshold(th,th_plus=th,i=0,asd=Hash.new,percent=th*0.25)
-    asd[i] = {min: th_plus-percent,max: (th_plus+th)-percent}
-    i == 3 ? (return asd) : (set_notification_threshold(th,th_plus*=2,i+=1,asd))
+  def set_notification_threshold(th,th_plus=th,i=0,th_hash=Hash.new,percent=th*0.25)
+    th_hash[i] = {min: th_plus-percent,max: (th_plus+th)-percent}
+    i == 3 ? (return th_hash) : (set_notification_threshold(th,th_plus*=2,i+=1,th_hash))
   end
 
-  desc "debug_on", "Turn Debug Mode ON"                                             # Enable and Disable Debug Mode
+  desc "debug_on", "Turn Debug Mode ON"                                                         # Enable and Disable Debug Mode
   def debug_on(debug=true)
     ap "Debugging is ON"
     @debug = debug
