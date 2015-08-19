@@ -4,15 +4,23 @@ class User
   attr_accessor :information, :time_entry, :notify
 
   # Initialize the User Class
-  def initialize(token,threshold=3600)
-    connection = Toggl.new token
-    temp=connection.me(true)
-    unless temp.nil?
-      @threshold=threshold
-      @information = Hash["id" => temp["id"], "email" => temp["email"], "fullname" => temp["fullname"], "z_threshold" => threshold]
-      @information["time_entry"] = @time_entry = running_task(temp["time_entries"])
+  def initialize(token=nil,threshold=3600)
+    unless token.nil?
+      connection = Toggl.new token
+      temp = connection.me(true)
+      unless temp.nil?
+        if (threshold.is_a? Numeric) && threshold >= 1
+          @threshold = threshold
+          @information = Hash["id" => temp["id"], "email" => temp["email"], "fullname" => temp["fullname"], "z_threshold" => threshold]
+          @information["time_entry"] = @time_entry = running_task(temp["time_entries"])
+        else
+          @information = {error: -1, description: "Time Limit is not Numeric or Higher than 1 second"}
+        end
+      else
+        @information = {error: -1, description: "Wrong Token or User doesn't Exist"}
+      end
     else
-      @information= nil
+      @information = {error: -1, description: "No Arguments"}
     end
   end
 

@@ -22,14 +22,9 @@ class Toggl_Slack < Thor
     self.debug_on(options[:db]) if !options[:db].nil? && options[:db]=="true"
 
     # Printing Received Information
-    ap "Slack WebHook URL: #{options[:sw]}" if @debug
-    ap "Toggl token: #{options[:tt]}" if @debug
-    ap "Time to Analyze: #{options[:tl]}" if @debug
-    ap "Slack User Account: #{options[:su]}" if @debug
-    ap "Debug Mode: #{options[:db]}" if @debug
-    ap "BOT Name: #{options[:bn]}" if @debug
+    ap options if @debug
 
-    user = User.new options[:tt],options[:tl].to_i
+    user = User.new options[:tt],options[:tl]
     ap user.information if @debug
 
     if user.notify
