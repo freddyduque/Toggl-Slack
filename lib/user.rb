@@ -3,13 +3,17 @@ require_relative 'togglV8'
 class User
   attr_accessor :information, :time_entry, :notify
 
-  def initialize(token,threshold=3600)                 # Initialize the User Class
+  # Initialize the User Class
+  def initialize(token,threshold=3600)
     connection = Toggl.new token
-    temp=connection.me(true)    
-    @threshold=threshold
-
-    @information = Hash["id" => temp["id"], "email" => temp["email"], "fullname" => temp["fullname"], "z_threshold" => threshold]
-    @information["time_entry"] = @time_entry = running_task(temp["time_entries"])    
+    temp=connection.me(true)
+    unless temp.nil?
+      @threshold=threshold
+      @information = Hash["id" => temp["id"], "email" => temp["email"], "fullname" => temp["fullname"], "z_threshold" => threshold]
+      @information["time_entry"] = @time_entry = running_task(temp["time_entries"])
+    else
+      @information= nil
+    end
   end
 
   # Get the Current Running Task in Toggl
@@ -48,7 +52,7 @@ class User
     end
   end
 
-	# Recursive function to set the notifications threshold
+  # Recursive function to set the notifications threshold
   def notification_threshold(threshold,threshold_plus=threshold,i=0,threshold_hash=Hash.new,percent=threshold*0.25)
     threshold_hash[i] = {"min" => threshold_plus-percent,"max" => (threshold_plus+threshold)-percent}
     i == 3 ? (return threshold_hash) : (notification_threshold(threshold,threshold_plus*=2,i+=1,threshold_hash))
