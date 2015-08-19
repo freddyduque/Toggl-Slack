@@ -18,10 +18,11 @@ class Toggl_Slack < Thor
   option :db
   option :bn
 
-  def toggle_slack
+  def toggl_slack
     self.debug_on(options[:db]) if !options[:db].nil? && options[:db]=="true"
 
-    ap "Slack WebHook URL: #{options[:sw]}" if @debug                                           # Printing Received Information
+    # Printing Received Information
+    ap "Slack WebHook URL: #{options[:sw]}" if @debug
     ap "Toggl token: #{options[:tt]}" if @debug
     ap "Time to Analyze: #{options[:tl]}" if @debug
     ap "Slack User Account: #{options[:su]}" if @debug
@@ -46,10 +47,11 @@ class Toggl_Slack < Thor
       supervisor.send("Hi #{user.information["fullname"]} #{supervisor.connection.channel if supervisor.connection.channel.start_with? '@'} This is a friendly notification")
     end
   end
-
-  desc "debug_on", "Turn Debug Mode ON"											# Enable and Disable Debug Mode
+  
+  # Enable and Disable Debug Mode
+  desc "debug_on", "Turn Debug Mode ON"
   def debug_on(debug=true)
-    ap "Debugging is ON"
+    ap "Debug mode is ON"
     @debug = debug
   end
 end
