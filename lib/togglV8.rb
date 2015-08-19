@@ -358,12 +358,16 @@ class Toggl
 
   private
 
-  def get(resource)
+  def get(resource) # get method was modified to return nil if the user does not exist
     puts "GET #{resource}" if @debug
     full_res = self.conn.get(resource)
     # ap full_res.env if @debug
-    res = JSON.parse(full_res.env[:body])
-    res.is_a?(Array) || res['data'].nil? ? res : res['data']
+    if (200 == full_res.env[:status]) then
+      res = JSON.parse(full_res.env[:body])
+      res.is_a?(Array) || res['data'].nil? ? res : res['data']
+    else
+      eval(full_res.env[:body])
+    end    
   end
 
   def post(resource, data)
@@ -392,5 +396,4 @@ class Toggl
     # ap full_res.env if @debug
     (200 == full_res.env[:status]) ? "" : eval(full_res.env[:body])
   end
-
 end
