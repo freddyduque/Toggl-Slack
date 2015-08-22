@@ -29,7 +29,6 @@ class Toggl_Slack < Thor
 
     if user.notify
       supervisor = Supervisor.new options[:sw]
-
       supervisor.connection.channel=options[:su]
       options[:bn].nil? ? (supervisor.connection.username="BOT_HMD"):(supervisor.connection.username=options[:bn])
 

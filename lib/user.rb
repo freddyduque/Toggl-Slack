@@ -5,23 +5,37 @@ class User
 
   # Initialize the User Class
   def initialize(token=nil,threshold=3600)
+    @threshold = number_or_nil(threshold)
+    ap @threshold
+    @information = Hash.new {|h,k| h[k]=[]}
+
+    # Check Threshold Value
+    unless @threshold.nil?
+      @information["z_error"] << {code: -1, description: "Time Limit is lower than 1 second"} if @threshold < 1
+    else
+      @information["z_error"] << {code: -1, description: "Time Limit is not Integer"}
+    end
+
+    # Check Token Value
     unless token.nil?
       connection = Toggl.new token
       temp = connection.me(true)
       unless temp.nil?
-        if (threshold.is_a? Numeric) && threshold >= 1
-          @threshold = threshold
-          @information = Hash["id" => temp["id"], "email" => temp["email"], "fullname" => temp["fullname"], "z_threshold" => threshold]
-          @information["time_entry"] = @time_entry = running_task(temp["time_entries"])
-        else
-          @information = {error: -1, description: "Time Limit is not Numeric or Higher than 1 second"}
-        end
+        @information.merge!({"id" => temp["id"], "email" => temp["email"], "fullname" => temp["fullname"], "z_threshold" => @threshold})
+        @information["time_entry"] = @time_entry = running_task(temp["time_entries"])
       else
-        @information = {error: -1, description: "Wrong Token or User doesn't Exist"}
+        @information["z_error"] << {code: -2, description: "Wrong Token or User doesn't exist"}
       end
     else
-      @information = {error: -1, description: "No Arguments"}
+      @information["z_error"] << {code: -2, description: "No Arguments"}
     end
+  end
+
+  # Check if a string is Numeric or not, return the corresponding Number or nil if it's String
+  def number_or_nil(string)
+    Integer(string || '')
+  rescue ArgumentError
+    nil
   end
 
   # Get the Current Running Task in Toggl
