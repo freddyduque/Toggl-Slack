@@ -5,13 +5,12 @@ class User
 
   # Initialize the User Class
   def initialize(token=nil,threshold=3600)
-    @threshold = number_or_nil(threshold)
-    ap @threshold
+    threshold = number_or_nil(threshold)
     @information = Hash.new {|h,k| h[k]=[]}
 
     # Check Threshold Value
-    unless @threshold.nil?
-      @information["z_error"] << {code: -1, description: "Time Limit is lower than 1 second"} if @threshold < 1
+    unless threshold.nil?
+      @information["z_error"] << {code: -1, description: "Time Limit is lower than 1 second"} if threshold < 1
     else
       @information["z_error"] << {code: -1, description: "Time Limit is not Integer"}
     end
@@ -20,31 +19,31 @@ class User
     unless token.nil?
       connection = Toggl.new token
       temp = connection.me(true)
-      unless temp.nil?
-        @information.merge!({"id" => temp["id"], "email" => temp["email"], "fullname" => temp["fullname"], "z_threshold" => @threshold})
-        @information["time_entry"] = @time_entry = running_task(temp["time_entries"])
-      else
-        @information["z_error"] << {code: -2, description: "Wrong Token or User doesn't exist"}
-      end
+      @information["z_error"] << {code: -2, description: "User doesn't exist"} if temp.nil?
     else
       @information["z_error"] << {code: -2, description: "No Arguments"}
+    end
+
+    unless @information.has_key?("z_error")
+      @information = {"id" => temp["id"], "email" => temp["email"], "fullname" => temp["fullname"], "z_threshold" => threshold}
+      @information["time_entry"] = @time_entry = running_task(temp["time_entries"],threshold)
     end
   end
 
   # Check if a string is Numeric or not, return the corresponding Number or nil if it's String
   def number_or_nil(string)
-    Integer(string || '')
+    Float(Integer(string || ''))
   rescue ArgumentError
     nil
   end
 
   # Get the Current Running Task in Toggl
-  def running_task(time_entries)
+  def running_task(time_entries,threshold)
     unless time_entries.nil?
       time_entries.each do |i|
         if i.key?("stop") == false
           i["z_running_time"] = running_time(i)
-          i["z_notification"] = @notify = notification(i)
+          i["z_notification"] = @notify = notification(i,threshold)
           return i
         end
       end
@@ -58,8 +57,8 @@ class User
   end
 
   # Set the Notification Type
-  def notification(task)
-    threshold_hash = notification_threshold(@threshold)
+  def notification(task,threshold)
+    threshold_hash = notification_threshold(threshold)
     case task["z_running_time"]
     when threshold_hash[0]["min"] .. threshold_hash[0]["max"]
       return {"z_range" => threshold_hash[0],"z_type" => "Notification","z_color" => "#00CC00"}
