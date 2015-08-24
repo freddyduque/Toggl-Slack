@@ -5,6 +5,7 @@ class User
 
   # Initialize the User Class
   def initialize(token=nil,threshold=3600)
+
     threshold = number_or_nil(threshold)
     @information = Hash.new {|h,k| h[k]=[]}
 
@@ -17,9 +18,13 @@ class User
 
     # Check Token Value
     unless token.nil?
-      connection = Toggl.new token
-      temp = connection.me(true)
-      @information["z_error"] << {code: -2, description: "User doesn't exist"} if temp.nil?
+      if token == ""
+        @information["z_error"] << {code: -2, description: "User Token is empty"}
+      else
+        connection = Toggl.new token
+        temp = connection.me(true)
+        @information["z_error"] << {code: -2, description: "User doesn't exist"} if temp.nil?
+      end
     else
       @information["z_error"] << {code: -2, description: "No Arguments"}
     end
@@ -32,7 +37,7 @@ class User
 
   # Check if a string is Numeric or not, return the corresponding Number or nil if it's String
   def number_or_nil(string)
-    Float(Integer(string || ''))
+    Integer(Float(string || ''))
   rescue ArgumentError
     nil
   end
