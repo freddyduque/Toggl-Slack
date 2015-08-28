@@ -53,6 +53,7 @@ class User
         end
       end
     end
+    # There's no Running Task for this User
     return false
   end
 
@@ -74,7 +75,8 @@ class User
     when threshold_hash[3]["min"] .. threshold_hash[3]["max"]
       return {"z_range" => threshold_hash[3],"z_type" => "Houston, We've got a Problem!","z_color" => "#FF0000"}
     else
-      return false                                     # There's no Notification for this User and Task
+      # There's no Notification for this User and Task
+      return false                                     
     end
   end
 
