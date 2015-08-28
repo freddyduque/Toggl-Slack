@@ -32,13 +32,17 @@ class Toggl_Slack < Thor
       supervisor.connection.channel=options[:su]
       options[:bn].nil? ? (supervisor.connection.username="BOT_HMD"):(supervisor.connection.username=options[:bn])
 
+      ap supervisor.connection if @debug
+
       supervisor.message["pretext"]="Please! check the following on your Toggle Timer"
       supervisor.message["text"]="\*Task description:\* \_#{user.time_entry.key?("description") ? "#{user.time_entry["description"]}" : "No Description"}\_\n\*Running Time:\* #{user.time_entry["z_running_time"]} seconds or #{Time.at(user.time_entry["z_running_time"]).utc.strftime("%H:%M:%S")}\n\*Status:\* #{user.notify["z_type"]}"
       supervisor.message["color"]=user.notify["z_color"]
       supervisor.message["title"]="Toggle Information"
       supervisor.message["title_link"]="https://www.toggl.com/app/timer"
       supervisor.message["mrkdwn_in"]=["text","pretext"]
+
       supervisor.send("Hi #{user.information["fullname"]} #{supervisor.connection.channel if supervisor.connection.channel.start_with? '@'} This is a friendly notification")
+      ap supervisor.connection if @debug
     end
   end
   
