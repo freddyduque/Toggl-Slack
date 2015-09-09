@@ -18,13 +18,9 @@ class User
 
     # Check Token Value
     unless token.nil?
-      if token == ""
-        @information["z_error"] << {code: -2, description: "User Token is empty"}
-      else
-        connection = Toggl.new token
-        temp = connection.me(true)
-        @information["z_error"] << {code: -2, description: "User doesn't exist"} if temp.nil?
-      end
+      connection = Toggl.new token
+      temp = connection.me(true)
+      @information["z_error"] << {code: -2, description: "User doesn't exist"} if temp.nil?
     else
       @information["z_error"] << {code: -2, description: "No Arguments"}
     end
