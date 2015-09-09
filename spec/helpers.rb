@@ -27,11 +27,14 @@ module Helpers
   def supervisor_with_bad_url
     supervisor "https://hooks.slack.com/services"
   end
+  def supervisor_with_no_token
+    supervisor "https://hooks.slack.com/services/T0887E294/B08K2UK0T/"
+  end
   def supervisor_with_bad_token
     supervisor "https://hooks.slack.com/services/T0887E294/B08K2UK0T/S2GDb24rJ"
-  end
-  def supervisor_with_no_token
-    supervisor "https://hooks.slack.com/services/T0887E294/B08K2UK0T"
+  end  
+  def supervisor_with_good_token
+    supervisor "https://hooks.slack.com/services/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"
   end
   def supervisor(webhook)
     (Supervisor.new webhook).send("testing message")

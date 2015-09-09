@@ -1,43 +1,31 @@
-require 'supervisor'
+#!/usr/bin/ruby
 
-RSpec.describe Supervisor do
-  describe "#Message" do
-    #1
-    context "with no parameters," do
-      it "return the corresponding error code and description, test 1" do
-        supervisor = Supervisor.new
-        expect(supervisor.connection["z_error"]).to eq([code: -3, description: "No Arguments"])
-      end
+require 'supervisor'
+require 'helpers'
+
+RSpec.configure do |c|
+  c.include Helpers
+end
+
+RSpec.describe "Supervisor message" do
+  context "When there is NO parameters" do
+    it "returns a NO argument error" do
+      expect(supervisor_with_no_arguments).to have_key("z_error")
     end
-    #2
-    context "with an empty webhook," do
-      it "return the corresponding error code and description, test 2" do
-        supervisor = Supervisor.new ""
-        expect(supervisor.connection["z_error"]).to eq([code: -3, description: "WebHook is empty"])
-      end
+  end
+
+  context "When the webhook is wrong" do
+    it "returns a webhook error" do
+      expect(supervisor_with_webhook "").to have_key("z_error")               # code: -3, description: "WebHook is empty"      
+      expect(supervisor_with_bad_url).to have_key("z_error")                  # code: -3, description: "Wrong URL"
+      expect(supervisor_with_bad_token).to have_key("z_error")                # code: -3, description: "Bad token"
+      expect(supervisor_with_no_token).to have_key("z_error")                 # code: -3, description: "No token"
     end
-    #3
-    context "with a wrong URL format," do
-      it "raise the corresponding error message, test 3" do
-        supervisor = Supervisor.new "httpasddasdT/S2GDb2asdasdABSDOsss"        
-        expect {supervisor.send("testing message")}.to raise_error(NoMethodError)
-      end
-    end
-    #4
-    context "with a wrong webhook," do
-      it "return the corresponding error code and description, test 4" do
-        supervisor = Supervisor.new "https://hooks.slack.com/services"    
-        supervisor.send("testing message")
-        expect(supervisor.connection["z_error"]).to eq([code: -3, description: "Bad token"])
-      end
-    end
-    #5
-    context "with a correct webhook," do
-      it "return the corresponding error code and description, test 5" do
-        supervisor = Supervisor.new "https://hooks.slack.com/services/T0887E294/B08K2UK0T/XXXXXXXXXXXXXXXXX"
-        supervisor.send("testing message")
-        expect(supervisor.connection).to eq("ok")
-      end
+  end
+
+  context "When the webhook is right" do
+    it "returns ok, and message is sent" do
+      expect(supervisor_with_good_token).to have_key(:connection)
     end
   end
 end

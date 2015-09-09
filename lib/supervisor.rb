@@ -1,6 +1,5 @@
 require 'slack-notifier'
 require 'awesome_print'
-require 'curb'
 
 class Supervisor
   attr_accessor :connection, :message
@@ -22,7 +21,17 @@ class Supervisor
   # Sends the Message
   def send(message=nil)
     awe = @connection.ping message, attachments: [@message]
-    @connection = awe.body if awe.body == "ok"
-    @connection = {"z_error" => [{code: -3, description: "Bad token"}]} if awe.body == "Bad token"
+    case awe.body
+    when "ok"
+      @connection = {connection: "ok"}
+    when "Bad token"
+      @connection = {"z_error" => [{code: -3, description: "Bad token"}]}
+    when ""
+      @connection = {"z_error" => [{code: -3, description: "Wrong URL"}]}
+    when "No token"
+      @connection = {"z_error" => [{code: -3, description: "No token"}]}
+    else
+      return false                                     
+    end
   end
 end
